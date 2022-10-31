@@ -1,5 +1,7 @@
 package dcron
 
+import "log"
+
 //SetLogger set dcron logger
 func (d *Dcron) SetLogger(logger *log.Logger) {
 	d.logger = logger

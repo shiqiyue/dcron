@@ -37,6 +37,7 @@ type Dcron struct {
 func NewDcron(serverName string, driver driver.Driver, cronOpts ...cron.Option) *Dcron {
 	dcron := newDcron(serverName)
 	dcron.crOptions = cronOpts
+	dcron.registerJobs = make(map[string]*JobWarpper, 0)
 	dcron.nodePool = newNodePool(serverName, driver, dcron, dcron.nodeUpdateDuration, dcron.hashReplicas)
 	dcron.lock = &sync.RWMutex{}
 	return dcron
@@ -140,30 +141,30 @@ func (d *Dcron) reloadJobMeta(jobMetas []*driver.JobMeta) {
 	d.cr.Start()
 }
 
-func (d *Dcron) Restart() {
-	d.lock.Lock()
-	defer d.lock.Unlock()
-	d.Stop()
-	d.Start()
-
-}
-
-// Run Job
-func (d *Dcron) Run() {
-	d.isRun = true
-	err := d.nodePool.StartPool()
-	if err != nil {
-		d.isRun = false
-		d.err("dcron start node pool error %+v", err)
-		return
-	}
-	d.info("dcron running nodeID is %s", d.nodePool.NodeID)
-
-}
-
 //Stop stop job
 func (d *Dcron) Stop() {
 	d.isRun = false
-	d.cr.Stop()
+	if d.cr != nil {
+		d.cr.Stop()
+	}
 	d.info("dcron stopped")
+}
+
+func (d *Dcron) AddJob(serviceName string, jobName string, cron string) error {
+	_, err := d.nodePool.Driver.AddJob(serviceName, jobName, cron)
+	return err
+}
+
+func (d *Dcron) RemoveJob(serviceName string, jobName string) error {
+	_, err := d.nodePool.Driver.RemoveJob(serviceName, jobName)
+	return err
+}
+
+func (d *Dcron) UpdateJob(serviceName string, jobName string, cron string) error {
+	_, err := d.nodePool.Driver.UpdateJob(serviceName, jobName, cron)
+	return err
+}
+
+func (d *Dcron) GetJobList(serviceName string) ([]*driver.JobMeta, error) {
+	return d.nodePool.Driver.GetJobList(serviceName)
 }

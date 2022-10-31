@@ -1,9 +1,8 @@
 package redis
 
 import (
-	"errors"
-	"fmt"
-	"github.com/gomodule/redigo/redis"
+	"context"
+	"github.com/go-redis/redis/v8"
 	"log"
 	"time"
 )
@@ -28,58 +27,28 @@ type Conf struct {
 // RedisDriver is redisDriver
 type RedisDriver struct {
 	conf        *Conf
-	redisClient *redis.Pool
+	redisClient *redis.Client
 	timeout     time.Duration
 	Key         string
 }
 
 // NewDriver return a redis driver
-func NewDriver(conf *Conf, options ...redis.DialOption) (*RedisDriver, error) {
-	ops := []redis.DialOption{
-		redis.DialPassword(conf.Password),
+func NewDriver(conf *Conf) (*RedisDriver, error) {
+	opts := &redis.Options{
+		Addr:     conf.Addr,
+		Password: conf.Password,
 	}
-	ops = append(ops, options...)
+	redisClient := redis.NewClient(opts)
 
-	if conf.Proto == "" {
-		conf.Proto = "tcp"
-	}
-	if conf.MaxActive == 0 {
-		conf.MaxActive = 100
-	}
-	if conf.MaxIdle == 0 {
-		conf.MaxIdle = 100
-	}
-	if conf.IdleTimeout == 0 {
-		conf.IdleTimeout = time.Second * 5
-	}
-	if conf.Addr == "" {
-		conf.Addr = fmt.Sprintf("%s:%d", conf.Host, conf.Port)
-	}
-
-	rd := &redis.Pool{
-		MaxIdle:     conf.MaxIdle,
-		MaxActive:   conf.MaxActive,
-		IdleTimeout: conf.IdleTimeout,
-		Wait:        conf.Wait,
-		Dial: func() (redis.Conn, error) {
-			c, err := redis.Dial(conf.Proto, conf.Addr, ops...)
-			if err != nil {
-				panic(err)
-			}
-			return c, nil
-		},
-	}
 	return &RedisDriver{
 		conf:        conf,
-		redisClient: rd,
+		redisClient: redisClient,
 	}, nil
 }
 
 // Ping is check redis valid
 func (rd *RedisDriver) Ping() error {
-	conn := rd.redisClient.Get()
-	defer conn.Close()
-	if _, err := conn.Do("SET", "ping", "pong"); err != nil {
+	if err := rd.redisClient.Set(context.Background(), "ping", "pong", 0).Err(); err != nil {
 		return err
 	}
 	return nil
@@ -100,45 +69,22 @@ func (rd *RedisDriver) heartBear(nodeID string) {
 	key := nodeID
 	tickers := time.NewTicker(rd.timeout / 2)
 	for range tickers.C {
-		keyExist, err := redis.Int(rd.do("EXPIRE", key, int(rd.timeout/time.Second)))
-		if err != nil {
+		if err := rd.redisClient.Expire(context.Background(), key, rd.timeout).Err(); err != nil {
 			log.Printf("redis expire error %+v", err)
 			continue
 		}
-		if keyExist == 0 {
-			if err := rd.registerServiceNode(nodeID); err != nil {
-				log.Printf("register service node error %+v", err)
-			}
-		}
 	}
 }
 
-func (rd *RedisDriver) do(command string, params ...interface{}) (interface{}, error) {
-	conn := rd.redisClient.Get()
-	defer conn.Close()
-	return conn.Do(command, params...)
-}
 func (rd *RedisDriver) scan(matchStr string) ([]string, error) {
-	cursor := "0"
 	ret := make([]string, 0)
-	for {
-		reply, err := rd.do("scan", cursor, "match", matchStr)
-		if err != nil {
-			return nil, err
-		}
-		if Reply, ok := reply.([]interface{}); ok && len(Reply) == 2 {
-			cursor = string(Reply[0].([]byte))
-
-			list := Reply[1].([]interface{})
-			for _, item := range list {
-				ret = append(ret, string(item.([]byte)))
-			}
-			if cursor == "0" {
-				break
-			}
-		} else {
-			return nil, errors.New("redis scan resp struct error")
-		}
+	iter := rd.redisClient.Scan(context.Background(), 0, matchStr, -1).Iterator()
+	for iter.Next(context.Background()) {
+		ret = append(ret, iter.Val())
 	}
+	if err := iter.Err(); err != nil {
+		return nil, err
+	}
+
 	return ret, nil
 }

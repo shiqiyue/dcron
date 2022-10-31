@@ -17,7 +17,7 @@ func (rd *RedisClusterDriver) AddJob(serviceName string, jobName string, cron st
 	if err != nil {
 		return "", err
 	}
-	err = rd.redisClient.Set(context.Background(), jobPath, string(jobMetaBs), -1).Err()
+	err = rd.redisClient.Set(context.Background(), jobPath, string(jobMetaBs), 0).Err()
 	if err != nil {
 		return "", err
 	}
@@ -43,7 +43,7 @@ func (rd *RedisClusterDriver) UpdateJob(serviceName string, jobName, cron string
 	if err != nil {
 		return "", err
 	}
-	err = rd.redisClient.Set(context.Background(), jobPath, string(jobMetaBs), -1).Err()
+	err = rd.redisClient.Set(context.Background(), jobPath, string(jobMetaBs), 0).Err()
 	if err != nil {
 		return "", err
 	}
@@ -52,16 +52,21 @@ func (rd *RedisClusterDriver) UpdateJob(serviceName string, jobName, cron string
 
 func (rd *RedisClusterDriver) GetJobList(serviceName string) ([]*driver.JobMeta, error) {
 	mathStr := fmt.Sprintf("%s*", rd.getJobMetaKeyPrefix(serviceName))
-	jobMetaStrs, err := rd.scan(mathStr)
+	jobMetaKeys, err := rd.scan(mathStr)
 	if err != nil {
 		return nil, err
 	}
-	if len(jobMetaStrs) == 0 {
+	if len(jobMetaKeys) == 0 {
 		return []*driver.JobMeta{}, nil
 	}
 	jobMetas := make([]*driver.JobMeta, 0)
-	for _, jobMetaStr := range jobMetaStrs {
-		jobMeta, err := rd.unMarshalJobMeta([]byte(jobMetaStr))
+	for _, jobMetaKey := range jobMetaKeys {
+		getResp := rd.redisClient.Get(context.Background(), jobMetaKey)
+		if getResp.Err() != nil {
+			return nil, getResp.Err()
+		}
+
+		jobMeta, err := rd.unMarshalJobMeta([]byte(getResp.Val()))
 		if err != nil {
 			return nil, err
 		}

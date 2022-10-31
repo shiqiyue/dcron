@@ -1,6 +1,7 @@
 package redis
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/libi/dcron/driver"
@@ -16,7 +17,7 @@ func (rd *RedisDriver) AddJob(serviceName string, jobName string, cron string) (
 	if err != nil {
 		return "", err
 	}
-	_, err = rd.do("SET", jobPath, string(jobMetaBs))
+	err = rd.redisClient.Set(context.Background(), jobPath, string(jobMetaBs), 0).Err()
 	if err != nil {
 		return "", err
 	}
@@ -25,7 +26,7 @@ func (rd *RedisDriver) AddJob(serviceName string, jobName string, cron string) (
 
 func (rd *RedisDriver) RemoveJob(serviceName string, jobName string) (string, error) {
 	jobPath := rd.getJobMetaPath(serviceName, jobName)
-	_, err := rd.do("DEL", jobPath)
+	err := rd.redisClient.Del(context.Background(), jobPath).Err()
 	if err != nil {
 		return "", err
 	}
@@ -39,10 +40,7 @@ func (rd *RedisDriver) UpdateJob(serviceName string, jobName, cron string) (stri
 		JobName:     jobName,
 		Cron:        cron,
 	})
-	if err != nil {
-		return "", err
-	}
-	_, err = rd.do("SET", jobPath, string(jobMetaBs))
+	err = rd.redisClient.Set(context.Background(), jobPath, string(jobMetaBs), 0).Err()
 	if err != nil {
 		return "", err
 	}
@@ -51,16 +49,21 @@ func (rd *RedisDriver) UpdateJob(serviceName string, jobName, cron string) (stri
 
 func (rd *RedisDriver) GetJobList(serviceName string) ([]*driver.JobMeta, error) {
 	mathStr := fmt.Sprintf("%s*", rd.getJobMetaKeyPrefix(serviceName))
-	jobMetaStrs, err := rd.scan(mathStr)
+	jobMetaKeys, err := rd.scan(mathStr)
 	if err != nil {
 		return nil, err
 	}
-	if len(jobMetaStrs) == 0 {
+	if len(jobMetaKeys) == 0 {
 		return []*driver.JobMeta{}, nil
 	}
 	jobMetas := make([]*driver.JobMeta, 0)
-	for _, jobMetaStr := range jobMetaStrs {
-		jobMeta, err := rd.unMarshalJobMeta([]byte(jobMetaStr))
+	for _, jobMetaKey := range jobMetaKeys {
+		getResp := rd.redisClient.Get(context.Background(), jobMetaKey)
+		if getResp.Err() != nil {
+			return nil, getResp.Err()
+		}
+
+		jobMeta, err := rd.unMarshalJobMeta([]byte(getResp.Val()))
 		if err != nil {
 			return nil, err
 		}

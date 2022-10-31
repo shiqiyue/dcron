@@ -1,9 +1,9 @@
 package redis
 
 import (
+	"context"
 	"fmt"
 	"github.com/google/uuid"
-	"time"
 )
 
 func (rd *RedisDriver) getNodeKeyPrefix(serviceName string) string {
@@ -18,18 +18,12 @@ func (rd *RedisDriver) GetServiceNodeList(serviceName string) ([]string, error) 
 
 //RegisterServiceNode  register a service node
 func (rd *RedisDriver) RegisterServiceNode(serviceName string) (nodeID string, err error) {
-	nodeID = rd.randNodeID(serviceName)
-	if err := rd.registerServiceNode(nodeID); err != nil {
+	nodeID = uuid.New().String()
+
+	key := rd.getNodeKeyPrefix(serviceName) + nodeID
+
+	if err := rd.redisClient.Set(context.Background(), key, nodeID, rd.timeout).Err(); err != nil {
 		return "", err
 	}
-	return nodeID, nil
-}
-
-func (rd *RedisDriver) randNodeID(serviceName string) (nodeID string) {
-	return rd.getNodeKeyPrefix(serviceName) + uuid.New().String()
-}
-
-func (rd *RedisDriver) registerServiceNode(nodeID string) error {
-	_, err := rd.do("SETEX", nodeID, int(rd.timeout/time.Second), nodeID)
-	return err
+	return key, nil
 }
