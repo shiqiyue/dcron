@@ -3,16 +3,11 @@ package redis_cluster
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
 	"github.com/go-redis/redis/v8"
-	"github.com/google/uuid"
 	"log"
 	"sync"
 	"time"
 )
-
-// GlobalKeyPrefix is global redis key preifx
-const GlobalKeyPrefix = "distributed-cron:"
 
 // Conf is redis cluster client config
 type Conf struct {
@@ -65,9 +60,6 @@ func (rd *RedisClusterDriver) Ping() error {
 	}
 	return nil
 }
-func (rd *RedisClusterDriver) getKeyPre(serviceName string) string {
-	return GlobalKeyPrefix + serviceName + ":"
-}
 
 //SetTimeout set redis key expiration timeout
 func (rd *RedisClusterDriver) SetTimeout(timeout time.Duration) {
@@ -89,25 +81,6 @@ func (rd *RedisClusterDriver) heartBear(nodeID string) {
 			continue
 		}
 	}
-}
-
-//GetServiceNodeList get a service node  list on redis cluster
-func (rd *RedisClusterDriver) GetServiceNodeList(serviceName string) ([]string, error) {
-	mathStr := fmt.Sprintf("%s*", rd.getKeyPre(serviceName))
-	return rd.scan(mathStr)
-}
-
-//RegisterServiceNode  register a service node
-func (rd *RedisClusterDriver) RegisterServiceNode(serviceName string) (nodeID string, err error) {
-
-	nodeID = uuid.New().String()
-
-	key := rd.getKeyPre(serviceName) + nodeID
-
-	if err := rd.redisClient.Set(rd.ctx, key, nodeID, rd.timeout).Err(); err != nil {
-		return "", err
-	}
-	return key, nil
 }
 
 /**

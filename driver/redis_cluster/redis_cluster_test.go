@@ -9,7 +9,7 @@ func TestClusterScan(t *testing.T) {
 	if err != nil {
 		return
 	}
-	matchStr := rd.getKeyPre("service")
+	matchStr := rd.getNodeKeyPre("service")
 	ret, err := rd.scan(matchStr)
 	if err != nil {
 		t.Log(err)

@@ -1,6 +1,7 @@
 package dcron
 
 import (
+	"encoding/json"
 	"github.com/libi/dcron/consistenthash"
 	"github.com/libi/dcron/driver"
 	"sync"
@@ -15,12 +16,16 @@ type NodePool struct {
 	mu    sync.Mutex
 	nodes *consistenthash.Map
 
+	jobMetas []*driver.JobMeta
+
 	Driver         driver.Driver
 	hashReplicas   int
 	hashFn         consistenthash.Hash
 	updateDuration time.Duration
 
 	dcron *Dcron
+
+	isRun bool
 }
 
 func newNodePool(serverName string, driver driver.Driver, dcron *Dcron, updateDuration time.Duration, hashReplicas int) *NodePool {
@@ -36,12 +41,16 @@ func newNodePool(serverName string, driver driver.Driver, dcron *Dcron, updateDu
 		dcron:          dcron,
 		hashReplicas:   hashReplicas,
 		updateDuration: updateDuration,
+		isRun:          false,
 	}
 	return nodePool
 }
 
 // StartPool Start Service Watch Pool
 func (np *NodePool) StartPool() error {
+	if np.isRun {
+		return nil
+	}
 	var err error
 	np.Driver.SetTimeout(np.updateDuration)
 	np.NodeID, err = np.Driver.RegisterServiceNode(np.serviceName)
@@ -56,6 +65,9 @@ func (np *NodePool) StartPool() error {
 	}
 
 	go np.tickerUpdatePool()
+
+	np.isRun = true
+
 	return nil
 }
 
@@ -70,6 +82,21 @@ func (np *NodePool) updatePool() error {
 	for _, node := range nodes {
 		np.nodes.Add(node)
 	}
+
+	jobList, err := np.Driver.GetJobList(np.serviceName)
+	if err != nil {
+		return err
+	}
+	oldBs, err := json.Marshal(np.jobMetas)
+	if err != nil {
+		return err
+	}
+	newBs, err := json.Marshal(jobList)
+	if string(oldBs) != string(newBs) {
+		np.jobMetaChange()
+	}
+	np.jobMetas = jobList
+
 	return nil
 }
 func (np *NodePool) tickerUpdatePool() {
@@ -95,4 +122,10 @@ func (np *NodePool) PickNodeByJobName(jobName string) string {
 		return ""
 	}
 	return np.nodes.Get(jobName)
+}
+
+// 任务元数据变动
+func (np *NodePool) jobMetaChange() {
+	np.dcron.info("任务元数据变动")
+	np.dcron.reloadJobMeta(np.jobMetas)
 }

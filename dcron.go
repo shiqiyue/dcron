@@ -6,6 +6,7 @@ import (
 	"github.com/robfig/cron/v3"
 	"log"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -14,6 +15,8 @@ const defaultDuration = time.Second
 
 //Dcron is main struct
 type Dcron struct {
+	registerJobs map[string]*JobWarpper
+
 	jobs       map[string]*JobWarpper
 	ServerName string
 	nodePool   *NodePool
@@ -26,15 +29,21 @@ type Dcron struct {
 
 	cr        *cron.Cron
 	crOptions []cron.Option
+
+	lock *sync.RWMutex
 }
 
 //NewDcron create a Dcron
 func NewDcron(serverName string, driver driver.Driver, cronOpts ...cron.Option) *Dcron {
 	dcron := newDcron(serverName)
 	dcron.crOptions = cronOpts
-	dcron.cr = cron.New(cronOpts...)
 	dcron.nodePool = newNodePool(serverName, driver, dcron, dcron.nodeUpdateDuration, dcron.hashReplicas)
+	dcron.lock = &sync.RWMutex{}
 	return dcron
+}
+
+func newCron(cronOpts ...cron.Option) *cron.Cron {
+	return cron.New(cronOpts...)
 }
 
 //NewDcronWithOption create a Dcron with Dcron Option
@@ -44,7 +53,6 @@ func NewDcronWithOption(serverName string, driver driver.Driver, dcronOpts ...Op
 		opt(dcron)
 	}
 
-	dcron.cr = cron.New(dcron.crOptions...)
 	dcron.nodePool = newNodePool(serverName, driver, dcron, dcron.nodeUpdateDuration, dcron.hashReplicas)
 	return dcron
 }
@@ -60,60 +68,31 @@ func newDcron(serverName string) *Dcron {
 	}
 }
 
-//SetLogger set dcron logger
-func (d *Dcron) SetLogger(logger *log.Logger) {
-	d.logger = logger
+//RegisterJob  register a job
+func (d *Dcron) RegisterJob(jobName string, job Job) (err error) {
+	return d.registerJob(jobName, nil, job)
 }
 
-//GetLogger get dcron logger
-func (d *Dcron) GetLogger() interface{ Printf(string, ...interface{}) } {
-	return d.logger
+//RegisterFunc add a cron func
+func (d *Dcron) RegisterFunc(jobName string, cmd func()) (err error) {
+	return d.registerJob(jobName, cmd, nil)
 }
 
-func (d *Dcron) info(format string, v ...interface{}) {
-	d.logger.Printf("INFO: "+format, v...)
-}
-func (d *Dcron) err(format string, v ...interface{}) {
-	d.logger.Printf("ERR: "+format, v...)
-}
-
-//AddJob  add a job
-func (d *Dcron) AddJob(jobName, cronStr string, job Job) (err error) {
-	return d.addJob(jobName, cronStr, nil, job)
-}
-
-//AddFunc add a cron func
-func (d *Dcron) AddFunc(jobName, cronStr string, cmd func()) (err error) {
-	return d.addJob(jobName, cronStr, cmd, nil)
-}
-func (d *Dcron) addJob(jobName, cronStr string, cmd func(), job Job) (err error) {
-	d.info("addJob '%s' :  %s", jobName, cronStr)
-	if _, ok := d.jobs[jobName]; ok {
+func (d *Dcron) registerJob(jobName string, cmd func(), job Job) (err error) {
+	d.info("register job '%s' :  %s", jobName)
+	if _, ok := d.registerJobs[jobName]; ok {
 		return errors.New("jobName already exist")
 	}
 	innerJob := JobWarpper{
-		Name:    jobName,
-		CronStr: cronStr,
-		Func:    cmd,
-		Job:     job,
-		Dcron:   d,
+		Name:  jobName,
+		Func:  cmd,
+		Job:   job,
+		Dcron: d,
 	}
-	entryID, err := d.cr.AddJob(cronStr, innerJob)
-	if err != nil {
-		return err
-	}
-	innerJob.ID = entryID
-	d.jobs[jobName] = &innerJob
+
+	d.registerJobs[jobName] = &innerJob
 
 	return nil
-}
-
-// Remove Job
-func (d *Dcron) Remove(jobName string) {
-	if job, ok := d.jobs[jobName]; ok {
-		delete(d.jobs, jobName)
-		d.cr.Remove(job.ID)
-	}
 }
 
 func (d *Dcron) allowThisNodeRun(jobName string) bool {
@@ -135,8 +114,38 @@ func (d *Dcron) Start() {
 		d.err("dcron start node pool error %+v", err)
 		return
 	}
-	d.cr.Start()
 	d.info("dcron started , nodeID is %s", d.nodePool.NodeID)
+}
+
+func (d *Dcron) reloadJobMeta(jobMetas []*driver.JobMeta) {
+	d.Stop()
+	d.jobs = make(map[string]*JobWarpper, 0)
+	d.cr = newCron(d.crOptions...)
+	if len(jobMetas) == 0 {
+		return
+	}
+	for _, jobMeta := range jobMetas {
+		jobWarpper := d.registerJobs[jobMeta.JobName]
+		if jobWarpper != nil {
+			jobWarpper.CronStr = jobMeta.Cron
+			entryID, err := d.cr.AddJob(jobMeta.Cron, jobWarpper)
+			if err != nil {
+				d.err("添加任务异常:%v", err)
+				continue
+			}
+			jobWarpper.ID = entryID
+			d.jobs[jobMeta.JobName] = jobWarpper
+		}
+	}
+	d.cr.Start()
+}
+
+func (d *Dcron) Restart() {
+	d.lock.Lock()
+	defer d.lock.Unlock()
+	d.Stop()
+	d.Start()
+
 }
 
 // Run Job
@@ -149,7 +158,6 @@ func (d *Dcron) Run() {
 		return
 	}
 	d.info("dcron running nodeID is %s", d.nodePool.NodeID)
-	d.cr.Run()
 
 }
 

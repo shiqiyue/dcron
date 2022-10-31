@@ -4,13 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gomodule/redigo/redis"
-	"github.com/google/uuid"
 	"log"
 	"time"
 )
-
-// GlobalKeyPrefix is global redis key preifx
-const GlobalKeyPrefix = "distributed-cron:"
 
 // RedisConf is redis config
 type Conf struct {
@@ -88,9 +84,6 @@ func (rd *RedisDriver) Ping() error {
 	}
 	return nil
 }
-func (rd *RedisDriver) getKeyPre(serviceName string) string {
-	return fmt.Sprintf("%s%s:", GlobalKeyPrefix, serviceName)
-}
 
 //SetTimeout set redis timeout
 func (rd *RedisDriver) SetTimeout(timeout time.Duration) {
@@ -118,30 +111,6 @@ func (rd *RedisDriver) heartBear(nodeID string) {
 			}
 		}
 	}
-}
-
-//GetServiceNodeList get a serveice node  list
-func (rd *RedisDriver) GetServiceNodeList(serviceName string) ([]string, error) {
-	mathStr := fmt.Sprintf("%s*", rd.getKeyPre(serviceName))
-	return rd.scan(mathStr)
-}
-
-//RegisterServiceNode  register a service node
-func (rd *RedisDriver) RegisterServiceNode(serviceName string) (nodeID string, err error) {
-	nodeID = rd.randNodeID(serviceName)
-	if err := rd.registerServiceNode(nodeID); err != nil {
-		return "", err
-	}
-	return nodeID, nil
-}
-
-func (rd *RedisDriver) randNodeID(serviceName string) (nodeID string) {
-	return rd.getKeyPre(serviceName) + uuid.New().String()
-}
-
-func (rd *RedisDriver) registerServiceNode(nodeID string) error {
-	_, err := rd.do("SETEX", nodeID, int(rd.timeout/time.Second), nodeID)
-	return err
 }
 
 func (rd *RedisDriver) do(command string, params ...interface{}) (interface{}, error) {
