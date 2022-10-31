@@ -71,11 +71,14 @@ func newDcron(serverName string) *Dcron {
 
 //RegisterJob  register a job
 func (d *Dcron) RegisterJob(jobName string, job Job) (err error) {
+	d.info("register job %s", jobName)
+
 	return d.registerJob(jobName, nil, job)
 }
 
 //RegisterFunc add a cron func
 func (d *Dcron) RegisterFunc(jobName string, cmd func()) (err error) {
+	d.info("register func %s", jobName)
 	return d.registerJob(jobName, cmd, nil)
 }
 

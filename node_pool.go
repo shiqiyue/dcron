@@ -92,10 +92,10 @@ func (np *NodePool) updatePool() error {
 		return err
 	}
 	newBs, err := json.Marshal(jobList)
+	np.jobMetas = jobList
 	if string(oldBs) != string(newBs) {
 		np.jobMetaChange()
 	}
-	np.jobMetas = jobList
 
 	return nil
 }

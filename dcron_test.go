@@ -21,7 +21,7 @@ func Test(t *testing.T) {
 
 	drv, _ := dredis.NewDriver(&dredis.Conf{Addr: "127.0.0.1:6379"})
 	dcron := NewDcron("server1", drv)
-	err := dcron.AddJob("server1", "s1 test1", "*/3 * * * *")
+	err := dcron.AddJob("server1", "s1 test1", "* * * * *")
 	if err != nil {
 		fmt.Println(err)
 		return
