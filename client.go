@@ -139,6 +139,7 @@ func (d *Client) Start() {
 }
 
 func (d *Client) reloadJobMeta(jobMetas []*driver.JobMeta) {
+	d.info("刷新任务元数据-开始")
 	d.stop()
 	d.cr = newCron(d.crOptions...)
 	if len(jobMetas) == 0 {
@@ -158,6 +159,8 @@ func (d *Client) reloadJobMeta(jobMetas []*driver.JobMeta) {
 	}
 	d.cr.Start()
 	d.isRun = true
+	d.info("刷新任务元数据-结束")
+
 }
 
 //Stop stop job

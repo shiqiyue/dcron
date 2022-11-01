@@ -51,8 +51,13 @@ func Test(t *testing.T) {
 	go runNode(t, drv, 3)
 
 	//测试120秒后退出
+	time.Sleep(20 * time.Second)
+	_, err = drv.AddJob("server1", "s1 test2", "*/12 * * * * *")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 	time.Sleep(120 * time.Second)
-	t.Log("testData", testData)
 }
 
 func runNode(t *testing.T, drv *dredis.RedisDriver, nodeId int) {
