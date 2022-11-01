@@ -50,7 +50,6 @@ func NewDcronWithOption(serverName string, driver driver.Driver, dcronOpts ...Op
 	for _, opt := range dcronOpts {
 		opt(dcron)
 	}
-
 	dcron.nodePool = newNodePool(serverName, driver, dcron, dcron.nodeUpdateDuration, dcron.hashReplicas)
 	return dcron
 }
@@ -76,6 +75,7 @@ func (d *Dcron) RegisterFunc(jobName string, cmd func()) (err error) {
 	return d.registerJob(jobName, cmd, nil)
 }
 
+// registerJob register a job
 func (d *Dcron) registerJob(jobName string, cmd func(), job Job) (err error) {
 	d.info("register job '%s'", jobName)
 	if _, ok := d.registerJobs[jobName]; ok {
@@ -91,6 +91,7 @@ func (d *Dcron) registerJob(jobName string, cmd func(), job Job) (err error) {
 	return nil
 }
 
+// allowThisNodeRun 判断作业是否在改节点运行
 func (d *Dcron) allowThisNodeRun(jobName string) bool {
 	allowRunNode := d.nodePool.PickNodeByJobName(jobName)
 	d.info("job '%s' running in node %s", jobName, allowRunNode)
