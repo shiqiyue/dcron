@@ -20,7 +20,7 @@ var testData = make(map[string]struct{})
 func Test(t *testing.T) {
 
 	drv, _ := dredis.NewDriver(&dredis.Conf{Addr: "127.0.0.1:6379"})
-	/*dcron := NewDcron("server1", drv)
+	/*dcron := NewClient("server1", drv)
 	err := dcron.AddJob("server1", "s1 test1", "* * * * *")
 	if err != nil {
 		fmt.Println(err)
@@ -45,7 +45,7 @@ func Test(t *testing.T) {
 }
 
 func runNode(t *testing.T, drv *dredis.RedisDriver, nodeId int) {
-	dcron := NewDcron("server1", drv)
+	dcron := NewClient("server1", drv)
 	//添加多个任务 启动多个节点时 任务会均匀分配给各个节点
 
 	err := dcron.RegisterFunc("s1 test1", func() {

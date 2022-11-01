@@ -23,12 +23,12 @@ type NodePool struct {
 	hashFn         consistenthash.Hash
 	updateDuration time.Duration
 
-	dcron *Dcron
+	dcron *Client
 
 	isRun bool
 }
 
-func newNodePool(serverName string, driver driver.Driver, dcron *Dcron, updateDuration time.Duration, hashReplicas int) *NodePool {
+func newNodePool(serverName string, driver driver.Driver, dcron *Client, updateDuration time.Duration, hashReplicas int) *NodePool {
 
 	err := driver.Ping()
 	if err != nil {

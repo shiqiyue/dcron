@@ -5,12 +5,12 @@ import (
 	"time"
 )
 
-// Option is Dcron Option
-type Option func(*Dcron)
+// Option is Client Option
+type Option func(*Client)
 
 // WithLogger both set dcron and cron logger.
 func WithLogger(logger interface{ Printf(string, ...interface{}) }) Option {
-	return func(dcron *Dcron) {
+	return func(dcron *Client) {
 		//set dcron logger
 		dcron.logger = logger
 		//set cron logger
@@ -21,21 +21,21 @@ func WithLogger(logger interface{ Printf(string, ...interface{}) }) Option {
 
 // WithNodeUpdateDuration set node update duration
 func WithNodeUpdateDuration(d time.Duration) Option {
-	return func(dcron *Dcron) {
+	return func(dcron *Client) {
 		dcron.nodeUpdateDuration = d
 	}
 }
 
 // WithHashReplicas set hashReplicas
 func WithHashReplicas(d int) Option {
-	return func(dcron *Dcron) {
+	return func(dcron *Client) {
 		dcron.hashReplicas = d
 	}
 }
 
 //CronOptionLocation is warp cron with location
 func CronOptionLocation(loc *time.Location) Option {
-	return func(dcron *Dcron) {
+	return func(dcron *Client) {
 		f := cron.WithLocation(loc)
 		dcron.crOptions = append(dcron.crOptions, f)
 	}
@@ -43,7 +43,7 @@ func CronOptionLocation(loc *time.Location) Option {
 
 //CronOptionSeconds is warp cron with seconds
 func CronOptionSeconds() Option {
-	return func(dcron *Dcron) {
+	return func(dcron *Client) {
 		f := cron.WithSeconds()
 		dcron.crOptions = append(dcron.crOptions, f)
 	}
@@ -51,7 +51,7 @@ func CronOptionSeconds() Option {
 
 // CronOptionParser is warp cron with schedules.
 func CronOptionParser(p cron.ScheduleParser) Option {
-	return func(dcron *Dcron) {
+	return func(dcron *Client) {
 		f := cron.WithParser(p)
 		dcron.crOptions = append(dcron.crOptions, f)
 	}
@@ -59,7 +59,7 @@ func CronOptionParser(p cron.ScheduleParser) Option {
 
 // CronOptionChain is Warp cron with chain
 func CronOptionChain(wrappers ...cron.JobWrapper) Option {
-	return func(dcron *Dcron) {
+	return func(dcron *Client) {
 		f := cron.WithChain(wrappers...)
 		dcron.crOptions = append(dcron.crOptions, f)
 	}

@@ -10,7 +10,7 @@ type Job interface {
 //JobWarpper is a job warpper
 type JobWarpper struct {
 	ID      cron.EntryID
-	Dcron   *Dcron
+	Dcron   *Client
 	Name    string
 	CronStr string
 	Func    func()

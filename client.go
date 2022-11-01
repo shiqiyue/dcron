@@ -14,8 +14,8 @@ const defaultReplicas = 50
 const defaultNodeDuration = time.Second
 const defaultJobMetaDuration = time.Second * 5
 
-//Dcron is main struct
-type Dcron struct {
+//Client is main struct
+type Client struct {
 	ServerName string
 	crOptions  []cron.Option
 
@@ -30,9 +30,9 @@ type Dcron struct {
 	lock                  *sync.RWMutex
 }
 
-//NewDcron create a Dcron
-func NewDcron(serverName string, driver driver.Driver, cronOpts ...cron.Option) *Dcron {
-	dcron := newDcron(serverName)
+//NewClient create a Client
+func NewClient(serverName string, driver driver.Driver, cronOpts ...cron.Option) *Client {
+	dcron := newClient(serverName)
 	dcron.crOptions = cronOpts
 	dcron.registerJobs = make(map[string]*JobWarpper, 0)
 	dcron.nodePool = newNodePool(serverName, driver, dcron, dcron.nodeUpdateDuration, dcron.hashReplicas)
@@ -44,9 +44,9 @@ func newCron(cronOpts ...cron.Option) *cron.Cron {
 	return cron.New(cronOpts...)
 }
 
-//NewDcronWithOption create a Dcron with Dcron Option
-func NewDcronWithOption(serverName string, driver driver.Driver, dcronOpts ...Option) *Dcron {
-	dcron := newDcron(serverName)
+//NewClientWithOption create a Client with Client Option
+func NewClientWithOption(serverName string, driver driver.Driver, dcronOpts ...Option) *Client {
+	dcron := newClient(serverName)
 	for _, opt := range dcronOpts {
 		opt(dcron)
 	}
@@ -54,8 +54,8 @@ func NewDcronWithOption(serverName string, driver driver.Driver, dcronOpts ...Op
 	return dcron
 }
 
-func newDcron(serverName string) *Dcron {
-	return &Dcron{
+func newClient(serverName string) *Client {
+	return &Client{
 		ServerName:            serverName,
 		logger:                log.New(os.Stdout, "[dcron] ", log.LstdFlags),
 		crOptions:             make([]cron.Option, 0),
@@ -66,17 +66,17 @@ func newDcron(serverName string) *Dcron {
 }
 
 //RegisterJob  register a job
-func (d *Dcron) RegisterJob(jobName string, job Job) (err error) {
+func (d *Client) RegisterJob(jobName string, job Job) (err error) {
 	return d.registerJob(jobName, nil, job)
 }
 
 //RegisterFunc add a cron func
-func (d *Dcron) RegisterFunc(jobName string, cmd func()) (err error) {
+func (d *Client) RegisterFunc(jobName string, cmd func()) (err error) {
 	return d.registerJob(jobName, cmd, nil)
 }
 
 // registerJob register a job
-func (d *Dcron) registerJob(jobName string, cmd func(), job Job) (err error) {
+func (d *Client) registerJob(jobName string, cmd func(), job Job) (err error) {
 	d.info("register job '%s'", jobName)
 	if _, ok := d.registerJobs[jobName]; ok {
 		return errors.New("jobName already exist")
@@ -92,7 +92,7 @@ func (d *Dcron) registerJob(jobName string, cmd func(), job Job) (err error) {
 }
 
 // allowThisNodeRun 判断作业是否在改节点运行
-func (d *Dcron) allowThisNodeRun(jobName string) bool {
+func (d *Client) allowThisNodeRun(jobName string) bool {
 	allowRunNode := d.nodePool.PickNodeByJobName(jobName)
 	d.info("job '%s' running in node %s", jobName, allowRunNode)
 	if allowRunNode == "" {
@@ -103,7 +103,7 @@ func (d *Dcron) allowThisNodeRun(jobName string) bool {
 }
 
 //Start start job
-func (d *Dcron) Start() {
+func (d *Client) Start() {
 	d.isRun = true
 	err := d.nodePool.StartPool()
 	if err != nil {
@@ -114,7 +114,7 @@ func (d *Dcron) Start() {
 	d.info("dcron started , nodeID is %s", d.nodePool.NodeID)
 }
 
-func (d *Dcron) reloadJobMeta(jobMetas []*driver.JobMeta) {
+func (d *Client) reloadJobMeta(jobMetas []*driver.JobMeta) {
 	d.Stop()
 	d.cr = newCron(d.crOptions...)
 	if len(jobMetas) == 0 {
@@ -137,7 +137,7 @@ func (d *Dcron) reloadJobMeta(jobMetas []*driver.JobMeta) {
 }
 
 //Stop stop job
-func (d *Dcron) Stop() {
+func (d *Client) Stop() {
 	d.isRun = false
 	if d.cr != nil {
 		d.cr.Stop()
@@ -145,21 +145,21 @@ func (d *Dcron) Stop() {
 	d.info("dcron stopped")
 }
 
-func (d *Dcron) AddJob(serviceName string, jobName string, cron string) error {
+func (d *Client) AddJob(serviceName string, jobName string, cron string) error {
 	_, err := d.nodePool.Driver.AddJob(serviceName, jobName, cron)
 	return err
 }
 
-func (d *Dcron) RemoveJob(serviceName string, jobName string) error {
+func (d *Client) RemoveJob(serviceName string, jobName string) error {
 	_, err := d.nodePool.Driver.RemoveJob(serviceName, jobName)
 	return err
 }
 
-func (d *Dcron) UpdateJob(serviceName string, jobName string, cron string) error {
+func (d *Client) UpdateJob(serviceName string, jobName string, cron string) error {
 	_, err := d.nodePool.Driver.UpdateJob(serviceName, jobName, cron)
 	return err
 }
 
-func (d *Dcron) GetJobList(serviceName string) ([]*driver.JobMeta, error) {
+func (d *Client) GetJobList(serviceName string) ([]*driver.JobMeta, error) {
 	return d.nodePool.Driver.GetJobList(serviceName)
 }
