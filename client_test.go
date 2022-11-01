@@ -20,13 +20,13 @@ var testData = make(map[string]struct{})
 func Test(t *testing.T) {
 
 	drv, _ := dredis.NewDriver(&dredis.Conf{Addr: "127.0.0.1:6379"})
-	/*dcron := NewClient("server1", drv)
-	err := dcron.AddJob("server1", "s1 test1", "* * * * *")
+	/*client := NewClient("server1", drv)
+	err := client.AddJob("server1", "s1 test1", "* * * * *")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	err = dcron.AddJob("server1", "s1 test2", "* * * * *")
+	err = client.AddJob("server1", "s1 test2", "* * * * *")
 	if err != nil {
 		fmt.Println(err)
 		return

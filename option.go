@@ -8,10 +8,10 @@ import (
 // Option is Client Option
 type Option func(*Client)
 
-// WithLogger both set dcron and cron logger.
+// WithLogger both set client and cron logger.
 func WithLogger(logger interface{ Printf(string, ...interface{}) }) Option {
 	return func(dcron *Client) {
-		//set dcron logger
+		//set client logger
 		dcron.logger = logger
 		//set cron logger
 		f := cron.WithLogger(cron.PrintfLogger(logger))

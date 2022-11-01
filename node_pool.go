@@ -23,7 +23,7 @@ type NodePool struct {
 	hashFn         consistenthash.Hash
 	updateDuration time.Duration
 
-	dcron *Client
+	client *Client
 
 	isRun bool
 }
@@ -38,7 +38,7 @@ func newNodePool(serverName string, driver driver.Driver, dcron *Client, updateD
 	nodePool := &NodePool{
 		Driver:         driver,
 		serviceName:    serverName,
-		dcron:          dcron,
+		client:         dcron,
 		hashReplicas:   hashReplicas,
 		updateDuration: updateDuration,
 		isRun:          false,
@@ -102,10 +102,10 @@ func (np *NodePool) updatePool() error {
 func (np *NodePool) tickerUpdatePool() {
 	tickers := time.NewTicker(np.updateDuration)
 	for range tickers.C {
-		if np.dcron.isRun {
+		if np.client.isRun {
 			err := np.updatePool()
 			if err != nil {
-				np.dcron.err("update node pool error %+v", err)
+				np.client.err("update node pool error %+v", err)
 			}
 		}
 	}
@@ -123,6 +123,6 @@ func (np *NodePool) PickNodeByJobName(jobName string) string {
 
 // 任务元数据变动
 func (np *NodePool) jobMetaChange() {
-	np.dcron.info("任务元数据变动")
-	np.dcron.reloadJobMeta(np.jobMetas)
+	np.client.info("任务元数据变动")
+	np.client.reloadJobMeta(np.jobMetas)
 }

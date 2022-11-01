@@ -2,12 +2,12 @@ package dcron
 
 import "log"
 
-//SetLogger set dcron logger
+//SetLogger set client logger
 func (d *Client) SetLogger(logger *log.Logger) {
 	d.logger = logger
 }
 
-//GetLogger get dcron logger
+//GetLogger get client logger
 func (d *Client) GetLogger() interface{ Printf(string, ...interface{}) } {
 	return d.logger
 }

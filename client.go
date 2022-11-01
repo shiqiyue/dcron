@@ -57,7 +57,7 @@ func NewClientWithOption(serverName string, driver driver.Driver, dcronOpts ...O
 func newClient(serverName string) *Client {
 	return &Client{
 		ServerName:            serverName,
-		logger:                log.New(os.Stdout, "[dcron] ", log.LstdFlags),
+		logger:                log.New(os.Stdout, "[client] ", log.LstdFlags),
 		crOptions:             make([]cron.Option, 0),
 		nodeUpdateDuration:    defaultNodeDuration,
 		jobMetaUpdateDuration: defaultJobMetaDuration,
@@ -108,10 +108,10 @@ func (d *Client) Start() {
 	err := d.nodePool.StartPool()
 	if err != nil {
 		d.isRun = false
-		d.err("dcron start node pool error %+v", err)
+		d.err("client start node pool error %+v", err)
 		return
 	}
-	d.info("dcron started , nodeID is %s", d.nodePool.NodeID)
+	d.info("client started , nodeID is %s", d.nodePool.NodeID)
 }
 
 func (d *Client) reloadJobMeta(jobMetas []*driver.JobMeta) {
@@ -142,7 +142,7 @@ func (d *Client) Stop() {
 	if d.cr != nil {
 		d.cr.Stop()
 	}
-	d.info("dcron stopped")
+	d.info("client stopped")
 }
 
 func (d *Client) AddJob(serviceName string, jobName string, cron string) error {
