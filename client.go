@@ -2,6 +2,7 @@ package dcron
 
 import (
 	"errors"
+	"github.com/libi/dcron/consistenthash"
 	"github.com/libi/dcron/driver"
 	"github.com/robfig/cron/v3"
 	"log"
@@ -18,25 +19,43 @@ const defaultJobMetaDuration = time.Second * 5
 type Client struct {
 	ServerName string
 	crOptions  []cron.Option
+	logger     interface{ Printf(string, ...interface{}) }
+	Driver     driver.Driver
 
-	registerJobs          map[string]*JobWarpper
-	nodePool              *NodePool
-	isRun                 bool
-	logger                interface{ Printf(string, ...interface{}) }
-	nodeUpdateDuration    time.Duration
+	cr    *cron.Cron
+	lock  *sync.RWMutex
+	isRun bool
+
+	// 节点信息
+	NodeID             string
+	nodeIds            []string
+	nodes              *consistenthash.Map
+	hashFn             consistenthash.Hash
+	hashReplicas       int
+	nodeUpdateDuration time.Duration
+	nodeLock           *sync.RWMutex
+
+	// 作业元数据信息
+	jobMetas              []*driver.JobMeta
 	jobMetaUpdateDuration time.Duration
-	hashReplicas          int
-	cr                    *cron.Cron
-	lock                  *sync.RWMutex
+	registerJobs          map[string]*JobWarpper
+	jobMetaLock           *sync.RWMutex
 }
 
 //NewClient create a Client
 func NewClient(serverName string, driver driver.Driver, cronOpts ...cron.Option) *Client {
+	err := driver.Ping()
+	if err != nil {
+		panic(err)
+	}
 	dcron := newClient(serverName)
+	driver.SetTimeout(dcron.nodeUpdateDuration)
+	dcron.Driver = driver
 	dcron.crOptions = cronOpts
 	dcron.registerJobs = make(map[string]*JobWarpper, 0)
-	dcron.nodePool = newNodePool(serverName, driver, dcron, dcron.nodeUpdateDuration, dcron.hashReplicas)
 	dcron.lock = &sync.RWMutex{}
+	dcron.nodeLock = &sync.RWMutex{}
+	dcron.jobMetaLock = &sync.RWMutex{}
 	return dcron
 }
 
@@ -50,7 +69,6 @@ func NewClientWithOption(serverName string, driver driver.Driver, dcronOpts ...O
 	for _, opt := range dcronOpts {
 		opt(dcron)
 	}
-	dcron.nodePool = newNodePool(serverName, driver, dcron, dcron.nodeUpdateDuration, dcron.hashReplicas)
 	return dcron
 }
 
@@ -93,29 +111,35 @@ func (d *Client) registerJob(jobName string, cmd func(), job Job) (err error) {
 
 // allowThisNodeRun 判断作业是否在改节点运行
 func (d *Client) allowThisNodeRun(jobName string) bool {
-	allowRunNode := d.nodePool.PickNodeByJobName(jobName)
+	allowRunNode := d.PickNodeByJobName(jobName)
 	d.info("job '%s' running in node %s", jobName, allowRunNode)
 	if allowRunNode == "" {
 		d.err("node pool is empty")
 		return false
 	}
-	return d.nodePool.NodeID == allowRunNode
+	return d.NodeID == allowRunNode
 }
 
 //Start start job
 func (d *Client) Start() {
 	d.isRun = true
-	err := d.nodePool.StartPool()
+	err := d.startNodeWatch()
 	if err != nil {
 		d.isRun = false
 		d.err("client start node pool error %+v", err)
 		return
 	}
-	d.info("client started , nodeID is %s", d.nodePool.NodeID)
+	err = d.startJobMetaWatch()
+	if err != nil {
+		d.isRun = false
+		d.err("client start job meta pool error %+v", err)
+		return
+	}
+	d.info("client started , nodeID is %s", d.NodeID)
 }
 
 func (d *Client) reloadJobMeta(jobMetas []*driver.JobMeta) {
-	d.Stop()
+	d.stop()
 	d.cr = newCron(d.crOptions...)
 	if len(jobMetas) == 0 {
 		return
@@ -138,28 +162,13 @@ func (d *Client) reloadJobMeta(jobMetas []*driver.JobMeta) {
 
 //Stop stop job
 func (d *Client) Stop() {
+	d.stop()
+	d.info("client stopped")
+}
+
+func (d Client) stop() {
 	d.isRun = false
 	if d.cr != nil {
 		d.cr.Stop()
 	}
-	d.info("client stopped")
-}
-
-func (d *Client) AddJob(serviceName string, jobName string, cron string) error {
-	_, err := d.nodePool.Driver.AddJob(serviceName, jobName, cron)
-	return err
-}
-
-func (d *Client) RemoveJob(serviceName string, jobName string) error {
-	_, err := d.nodePool.Driver.RemoveJob(serviceName, jobName)
-	return err
-}
-
-func (d *Client) UpdateJob(serviceName string, jobName string, cron string) error {
-	_, err := d.nodePool.Driver.UpdateJob(serviceName, jobName, cron)
-	return err
-}
-
-func (d *Client) GetJobList(serviceName string) ([]*driver.JobMeta, error) {
-	return d.nodePool.Driver.GetJobList(serviceName)
 }
