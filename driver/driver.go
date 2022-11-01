@@ -17,6 +17,7 @@ type Driver interface {
 	SetTimeout(timeout time.Duration)
 	GetServiceNodeList(ServiceName string) ([]string, error)
 	RegisterServiceNode(ServiceName string) (string, error)
+
 	// 添加作业
 	AddJob(serviceName string, jobName string, cron string) (string, error)
 	// 删除作业
@@ -25,4 +26,11 @@ type Driver interface {
 	UpdateJob(serviceName string, jobName, cron string) (string, error)
 	// 获取作业列表
 	GetJobList(serviceName string) ([]*JobMeta, error)
+
+	// 添加服务
+	AddService(serviceName string) (string, error)
+	// 删除服务
+	RemoveService(serviceName string) (string, error)
+	// 获取服务列表
+	GetServiceList() ([]string, error)
 }

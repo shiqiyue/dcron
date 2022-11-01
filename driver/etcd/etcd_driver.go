@@ -10,8 +10,6 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
-var _ driver.Driver = &EtcdDriver{}
-
 const (
 	defaultLease    = 5 // 5 second ttl
 	dialTimeout     = 3 * time.Second

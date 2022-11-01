@@ -9,19 +9,9 @@ import (
 
 // RedisConf is redis config
 type Conf struct {
-	Proto string
-
-	// first use addr
 	Addr     string
 	Password string
-
-	Host string
-	Port int
-
-	MaxActive   int
-	MaxIdle     int
-	IdleTimeout time.Duration
-	Wait        bool
+	DB       int
 }
 
 // RedisDriver is redisDriver
@@ -37,6 +27,7 @@ func NewDriver(conf *Conf) (*RedisDriver, error) {
 	opts := &redis.Options{
 		Addr:     conf.Addr,
 		Password: conf.Password,
+		DB:       conf.DB,
 	}
 	redisClient := redis.NewClient(opts)
 
