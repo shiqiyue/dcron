@@ -7,7 +7,7 @@ import (
 )
 
 func (d *Client) loadNodes() error {
-	nodes, err := d.Driver.GetServiceNodeList(d.ServerName)
+	nodes, err := d.Driver.GetServiceNodeList(d.ServiceName)
 	if err != nil {
 		return err
 	}
@@ -30,7 +30,7 @@ func (d *Client) loadNodes() error {
 }
 
 func (d *Client) loadJobMetas() error {
-	jobList, err := d.Driver.GetJobList(d.ServerName)
+	jobList, err := d.Driver.GetJobList(d.ServiceName)
 	if err != nil {
 		return err
 	}
@@ -50,7 +50,7 @@ func (d *Client) loadJobMetas() error {
 }
 
 func (d *Client) startNodeWatch() error {
-	nodeId, err := d.Driver.RegisterServiceNode(d.ServerName)
+	nodeId, err := d.Driver.RegisterServiceNode(d.ServiceName)
 	if err != nil {
 		return err
 	}

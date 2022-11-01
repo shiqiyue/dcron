@@ -17,10 +17,10 @@ const defaultJobMetaDuration = time.Second * 5
 
 //Client is main struct
 type Client struct {
-	ServerName string
-	crOptions  []cron.Option
-	logger     interface{ Printf(string, ...interface{}) }
-	Driver     driver.Driver
+	ServiceName string
+	crOptions   []cron.Option
+	logger      interface{ Printf(string, ...interface{}) }
+	Driver      driver.Driver
 
 	cr    *cron.Cron
 	lock  *sync.RWMutex
@@ -43,12 +43,12 @@ type Client struct {
 }
 
 //NewClient create a Client
-func NewClient(serverName string, driver driver.Driver, cronOpts ...cron.Option) *Client {
+func NewClient(serviceName string, driver driver.Driver, cronOpts ...cron.Option) *Client {
 	err := driver.Ping()
 	if err != nil {
 		panic(err)
 	}
-	dcron := newClient(serverName)
+	dcron := newClient(serviceName)
 	driver.SetTimeout(dcron.nodeUpdateDuration)
 	dcron.Driver = driver
 	dcron.crOptions = cronOpts
@@ -64,17 +64,17 @@ func newCron(cronOpts ...cron.Option) *cron.Cron {
 }
 
 //NewClientWithOption create a Client with Client Option
-func NewClientWithOption(serverName string, driver driver.Driver, dcronOpts ...Option) *Client {
-	dcron := newClient(serverName)
+func NewClientWithOption(serviceName string, driver driver.Driver, dcronOpts ...Option) *Client {
+	dcron := newClient(serviceName)
 	for _, opt := range dcronOpts {
 		opt(dcron)
 	}
 	return dcron
 }
 
-func newClient(serverName string) *Client {
+func newClient(serviceName string) *Client {
 	return &Client{
-		ServerName:            serverName,
+		ServiceName:           serviceName,
 		logger:                log.New(os.Stdout, "[client] ", log.LstdFlags),
 		crOptions:             make([]cron.Option, 0),
 		nodeUpdateDuration:    defaultNodeDuration,
