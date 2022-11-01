@@ -28,7 +28,7 @@ func (e *RedisDriver) RemoveService(serviceName string) (string, error) {
 func (e *RedisDriver) GetServiceList() ([]string, error) {
 
 	pathPrefix := e.getServicePrefix()
-	keys, err := e.scan(pathPrefix)
+	keys, err := e.scan(pathPrefix + "*")
 	if err != nil {
 		return nil, err
 	}
