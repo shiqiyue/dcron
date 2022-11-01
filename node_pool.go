@@ -94,7 +94,7 @@ func (np *NodePool) updatePool() error {
 	newBs, err := json.Marshal(jobList)
 	np.jobMetas = jobList
 	if string(oldBs) != string(newBs) {
-		np.jobMetaChange()
+		go np.jobMetaChange()
 	}
 
 	return nil
@@ -107,9 +107,6 @@ func (np *NodePool) tickerUpdatePool() {
 			if err != nil {
 				np.dcron.err("update node pool error %+v", err)
 			}
-		} else {
-			tickers.Stop()
-			return
 		}
 	}
 }

@@ -71,19 +71,17 @@ func newDcron(serverName string) *Dcron {
 
 //RegisterJob  register a job
 func (d *Dcron) RegisterJob(jobName string, job Job) (err error) {
-	d.info("register job %s", jobName)
 
 	return d.registerJob(jobName, nil, job)
 }
 
 //RegisterFunc add a cron func
 func (d *Dcron) RegisterFunc(jobName string, cmd func()) (err error) {
-	d.info("register func %s", jobName)
 	return d.registerJob(jobName, cmd, nil)
 }
 
 func (d *Dcron) registerJob(jobName string, cmd func(), job Job) (err error) {
-	d.info("register job '%s' :  %s", jobName)
+	d.info("register job '%s'", jobName)
 	if _, ok := d.registerJobs[jobName]; ok {
 		return errors.New("jobName already exist")
 	}
@@ -142,6 +140,7 @@ func (d *Dcron) reloadJobMeta(jobMetas []*driver.JobMeta) {
 		}
 	}
 	d.cr.Start()
+	d.isRun = true
 }
 
 //Stop stop job
