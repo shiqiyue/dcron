@@ -11,26 +11,23 @@ import (
 )
 
 const defaultReplicas = 50
-const defaultDuration = time.Second
+const defaultNodeDuration = time.Second
+const defaultJobMetaDuration = time.Second * 5
 
 //Dcron is main struct
 type Dcron struct {
-	registerJobs map[string]*JobWarpper
-
-	jobs       map[string]*JobWarpper
 	ServerName string
-	nodePool   *NodePool
-	isRun      bool
+	crOptions  []cron.Option
 
-	logger interface{ Printf(string, ...interface{}) }
-
-	nodeUpdateDuration time.Duration
-	hashReplicas       int
-
-	cr        *cron.Cron
-	crOptions []cron.Option
-
-	lock *sync.RWMutex
+	registerJobs          map[string]*JobWarpper
+	nodePool              *NodePool
+	isRun                 bool
+	logger                interface{ Printf(string, ...interface{}) }
+	nodeUpdateDuration    time.Duration
+	jobMetaUpdateDuration time.Duration
+	hashReplicas          int
+	cr                    *cron.Cron
+	lock                  *sync.RWMutex
 }
 
 //NewDcron create a Dcron
@@ -60,18 +57,17 @@ func NewDcronWithOption(serverName string, driver driver.Driver, dcronOpts ...Op
 
 func newDcron(serverName string) *Dcron {
 	return &Dcron{
-		ServerName:         serverName,
-		logger:             log.New(os.Stdout, "[dcron] ", log.LstdFlags),
-		jobs:               make(map[string]*JobWarpper),
-		crOptions:          make([]cron.Option, 0),
-		nodeUpdateDuration: defaultDuration,
-		hashReplicas:       defaultReplicas,
+		ServerName:            serverName,
+		logger:                log.New(os.Stdout, "[dcron] ", log.LstdFlags),
+		crOptions:             make([]cron.Option, 0),
+		nodeUpdateDuration:    defaultNodeDuration,
+		jobMetaUpdateDuration: defaultJobMetaDuration,
+		hashReplicas:          defaultReplicas,
 	}
 }
 
 //RegisterJob  register a job
 func (d *Dcron) RegisterJob(jobName string, job Job) (err error) {
-
 	return d.registerJob(jobName, nil, job)
 }
 
@@ -91,9 +87,7 @@ func (d *Dcron) registerJob(jobName string, cmd func(), job Job) (err error) {
 		Job:   job,
 		Dcron: d,
 	}
-
 	d.registerJobs[jobName] = &innerJob
-
 	return nil
 }
 
@@ -121,7 +115,6 @@ func (d *Dcron) Start() {
 
 func (d *Dcron) reloadJobMeta(jobMetas []*driver.JobMeta) {
 	d.Stop()
-	d.jobs = make(map[string]*JobWarpper, 0)
 	d.cr = newCron(d.crOptions...)
 	if len(jobMetas) == 0 {
 		return
@@ -136,7 +129,6 @@ func (d *Dcron) reloadJobMeta(jobMetas []*driver.JobMeta) {
 				continue
 			}
 			jobWarpper.ID = entryID
-			d.jobs[jobMeta.JobName] = jobWarpper
 		}
 	}
 	d.cr.Start()
