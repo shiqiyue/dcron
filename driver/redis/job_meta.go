@@ -7,9 +7,9 @@ import (
 	"github.com/libi/dcron/driver"
 )
 
-func (rd *RedisDriver) AddJob(serviceName string, jobName string, cron string) (string, error) {
-	jobPath := rd.getJobMetaPath(serviceName, jobName)
-	jobMetaBs, err := rd.marshalJobMeta(&driver.JobMeta{
+func (d *RedisDriver) AddJob(serviceName string, jobName string, cron string) (string, error) {
+	jobPath := d.getJobMetaPath(serviceName, jobName)
+	jobMetaBs, err := d.marshalJobMeta(&driver.JobMeta{
 		ServiceName: serviceName,
 		JobName:     jobName,
 		Cron:        cron,
@@ -17,66 +17,92 @@ func (rd *RedisDriver) AddJob(serviceName string, jobName string, cron string) (
 	if err != nil {
 		return "", err
 	}
-	err = rd.redisClient.Set(context.Background(), jobPath, string(jobMetaBs), 0).Err()
+	err = d.redisClient.Set(context.Background(), jobPath, string(jobMetaBs), 0).Err()
+	if err != nil {
+		return "", err
+	}
+	_, err = d.incrMetaVersion()
 	if err != nil {
 		return "", err
 	}
 	return jobPath, nil
 }
 
-func (rd *RedisDriver) RemoveJob(serviceName string, jobName string) (string, error) {
-	jobPath := rd.getJobMetaPath(serviceName, jobName)
-	err := rd.redisClient.Del(context.Background(), jobPath).Err()
+func (d *RedisDriver) RemoveJob(serviceName string, jobName string) (string, error) {
+	jobPath := d.getJobMetaPath(serviceName, jobName)
+	err := d.redisClient.Del(context.Background(), jobPath).Err()
+	if err != nil {
+		return "", err
+	}
+	_, err = d.incrMetaVersion()
 	if err != nil {
 		return "", err
 	}
 	return jobPath, nil
 }
 
-func (rd *RedisDriver) UpdateJob(serviceName string, jobName, cron string) (string, error) {
-	jobPath := rd.getJobMetaPath(serviceName, jobName)
-	jobMetaBs, err := rd.marshalJobMeta(&driver.JobMeta{
+func (d *RedisDriver) UpdateJob(serviceName string, jobName, cron string) (string, error) {
+	jobPath := d.getJobMetaPath(serviceName, jobName)
+	jobMetaBs, err := d.marshalJobMeta(&driver.JobMeta{
 		ServiceName: serviceName,
 		JobName:     jobName,
 		Cron:        cron,
 	})
-	err = rd.redisClient.Set(context.Background(), jobPath, string(jobMetaBs), 0).Err()
+	err = d.redisClient.Set(context.Background(), jobPath, string(jobMetaBs), 0).Err()
+	if err != nil {
+		return "", err
+	}
+	_, err = d.incrMetaVersion()
 	if err != nil {
 		return "", err
 	}
 	return jobPath, nil
 }
 
-func (rd *RedisDriver) GetJobList(serviceName string) ([]*driver.JobMeta, error) {
-	mathStr := fmt.Sprintf("%s*", rd.getJobMetaKeyPrefix(serviceName))
-	jobMetaKeys, err := rd.scan(mathStr)
+func (d *RedisDriver) GetJobList(serviceName string) ([]*driver.JobMeta, error) {
+	jobMetas, jobMetasExist := d.serviceJobMetaList[serviceName]
+	if jobMetasExist {
+		currentMetaVersion, err := d.getMetaVersion()
+		if err != nil {
+			return nil, err
+		}
+		oldMetaVersion := d.metaVersion
+		d.metaVersion = currentMetaVersion
+		if currentMetaVersion == oldMetaVersion {
+			return jobMetas, nil
+		}
+	}
+
+	mathStr := fmt.Sprintf("%s*", d.getJobMetaKeyPrefix(serviceName))
+	jobMetaKeys, err := d.scan(mathStr)
 	if err != nil {
 		return nil, err
 	}
 	if len(jobMetaKeys) == 0 {
 		return []*driver.JobMeta{}, nil
 	}
-	jobMetas := make([]*driver.JobMeta, 0)
+	jobMetas = make([]*driver.JobMeta, 0)
 	for _, jobMetaKey := range jobMetaKeys {
-		getResp := rd.redisClient.Get(context.Background(), jobMetaKey)
+		getResp := d.redisClient.Get(context.Background(), jobMetaKey)
 		if getResp.Err() != nil {
 			return nil, getResp.Err()
 		}
 
-		jobMeta, err := rd.unMarshalJobMeta([]byte(getResp.Val()))
+		jobMeta, err := d.unMarshalJobMeta([]byte(getResp.Val()))
 		if err != nil {
 			return nil, err
 		}
 		jobMetas = append(jobMetas, jobMeta)
 	}
+	d.serviceJobMetaList[serviceName] = jobMetas
 	return jobMetas, nil
 }
 
-func (rd *RedisDriver) marshalJobMeta(jobMeta *driver.JobMeta) ([]byte, error) {
+func (d *RedisDriver) marshalJobMeta(jobMeta *driver.JobMeta) ([]byte, error) {
 	return json.Marshal(jobMeta)
 }
 
-func (rd *RedisDriver) unMarshalJobMeta(bs []byte) (*driver.JobMeta, error) {
+func (d *RedisDriver) unMarshalJobMeta(bs []byte) (*driver.JobMeta, error) {
 	r := &driver.JobMeta{}
 	err := json.Unmarshal(bs, r)
 	if err != nil {
@@ -85,10 +111,10 @@ func (rd *RedisDriver) unMarshalJobMeta(bs []byte) (*driver.JobMeta, error) {
 	return r, nil
 }
 
-func (rd RedisDriver) getJobMetaKeyPrefix(serviceName string) string {
+func (d RedisDriver) getJobMetaKeyPrefix(serviceName string) string {
 	return fmt.Sprintf("%s%s%s", "dcron:", serviceName+":", "jobs:")
 }
 
-func (rd RedisDriver) getJobMetaPath(serviceName string, jobName string) string {
-	return rd.getJobMetaKeyPrefix(serviceName) + jobName
+func (d RedisDriver) getJobMetaPath(serviceName string, jobName string) string {
+	return d.getJobMetaKeyPrefix(serviceName) + jobName
 }

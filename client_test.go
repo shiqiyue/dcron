@@ -44,10 +44,7 @@ func Test(t *testing.T) {
 	}*/
 
 	go runNode(t, drv, 1)
-	// 间隔1秒启动测试节点刷新逻辑
-	time.Sleep(time.Second)
 	go runNode(t, drv, 2)
-	time.Sleep(time.Second * 2)
 	go runNode(t, drv, 3)
 
 	//测试120秒后退出

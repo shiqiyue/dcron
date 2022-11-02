@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"github.com/go-redis/redis/v8"
+	"github.com/libi/dcron/driver"
 	"log"
 	"time"
 )
@@ -20,6 +21,10 @@ type RedisDriver struct {
 	redisClient *redis.Client
 	timeout     time.Duration
 	Key         string
+
+	serviceJobMetaList map[string][]*driver.JobMeta
+	// 元数据版本号
+	metaVersion int64
 }
 
 // NewDriver return a redis driver
@@ -32,44 +37,45 @@ func NewDriver(conf *Conf) (*RedisDriver, error) {
 	redisClient := redis.NewClient(opts)
 
 	return &RedisDriver{
-		conf:        conf,
-		redisClient: redisClient,
+		conf:               conf,
+		redisClient:        redisClient,
+		serviceJobMetaList: make(map[string][]*driver.JobMeta, 0),
 	}, nil
 }
 
 // Ping is check redis valid
-func (rd *RedisDriver) Ping() error {
-	if err := rd.redisClient.Set(context.Background(), "ping", "pong", 0).Err(); err != nil {
+func (d *RedisDriver) Ping() error {
+	if err := d.redisClient.Set(context.Background(), "ping", "pong", 0).Err(); err != nil {
 		return err
 	}
 	return nil
 }
 
 //SetTimeout set redis timeout
-func (rd *RedisDriver) SetTimeout(timeout time.Duration) {
-	rd.timeout = timeout
+func (d *RedisDriver) SetTimeout(timeout time.Duration) {
+	d.timeout = timeout
 }
 
 //SetHeartBeat set herbear
-func (rd *RedisDriver) SetHeartBeat(nodeID string) {
-	go rd.heartBear(nodeID)
+func (d *RedisDriver) SetHeartBeat(nodeID string) {
+	go d.heartBear(nodeID)
 }
-func (rd *RedisDriver) heartBear(nodeID string) {
+func (d *RedisDriver) heartBear(nodeID string) {
 
 	//每间隔timeout/2设置一次key的超时时间为timeout
 	key := nodeID
-	tickers := time.NewTicker(rd.timeout / 2)
+	tickers := time.NewTicker(d.timeout / 2)
 	for range tickers.C {
-		if err := rd.redisClient.Expire(context.Background(), key, rd.timeout).Err(); err != nil {
+		if err := d.redisClient.Expire(context.Background(), key, d.timeout).Err(); err != nil {
 			log.Printf("redis expire error %+v", err)
 			continue
 		}
 	}
 }
 
-func (rd *RedisDriver) scan(matchStr string) ([]string, error) {
+func (d *RedisDriver) scan(matchStr string) ([]string, error) {
 	ret := make([]string, 0)
-	iter := rd.redisClient.Scan(context.Background(), 0, matchStr, -1).Iterator()
+	iter := d.redisClient.Scan(context.Background(), 0, matchStr, -1).Iterator()
 	for iter.Next(context.Background()) {
 		ret = append(ret, iter.Val())
 	}
