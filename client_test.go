@@ -58,7 +58,7 @@ func TestGormDriver(t *testing.T) {
 		fmt.Println(err)
 		return
 	}
-	drv, _ := dgorm.NewDriver(db, time.Second*5)
+	drv, _ := dgorm.NewDriver(db)
 	_, err = drv.AddJob("server1", "s1 test1", "*/5 * * * * *")
 	if err != nil {
 		fmt.Println(err)

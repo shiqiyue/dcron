@@ -5,7 +5,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func (g GormDriver) AddJob(serviceName string, jobName string, cron string) (string, error) {
+func (g *GormDriver) AddJob(serviceName string, jobName string, cron string) (string, error) {
 	err := g.DB.Transaction(func(tx *gorm.DB) error {
 		updateNum, err := NewJobMetaQuerySet(tx).ServiceNameEq(serviceName).JobNameEq(jobName).GetUpdater().SetCron(cron).UpdateNum()
 		if err != nil {
@@ -35,7 +35,7 @@ func (g GormDriver) AddJob(serviceName string, jobName string, cron string) (str
 	return jobName, nil
 }
 
-func (g GormDriver) RemoveJob(serviceName string, jobName string) (string, error) {
+func (g *GormDriver) RemoveJob(serviceName string, jobName string) (string, error) {
 	err := g.DB.Transaction(func(tx *gorm.DB) error {
 		err := NewJobMetaQuerySet(tx).ServiceNameEq(serviceName).JobNameEq(jobName).Delete()
 		if err != nil {
@@ -53,7 +53,7 @@ func (g GormDriver) RemoveJob(serviceName string, jobName string) (string, error
 	return jobName, nil
 }
 
-func (g GormDriver) UpdateJob(serviceName string, jobName, cron string) (string, error) {
+func (g *GormDriver) UpdateJob(serviceName string, jobName, cron string) (string, error) {
 	err := g.DB.Transaction(func(tx *gorm.DB) error {
 		updateNum, err := NewJobMetaQuerySet(tx).ServiceNameEq(serviceName).JobNameEq(jobName).GetUpdater().SetCron(cron).UpdateNum()
 		if err != nil {
@@ -83,7 +83,7 @@ func (g GormDriver) UpdateJob(serviceName string, jobName, cron string) (string,
 	return jobName, nil
 }
 
-func (g GormDriver) GetJobList(serviceName string) ([]*driver.JobMeta, error) {
+func (g *GormDriver) GetJobList(serviceName string) ([]*driver.JobMeta, error) {
 	djobMetas, jobMetasExist := g.serviceJobMetaList[serviceName]
 	if jobMetasExist {
 		currentMetaVersion, err := g.getMetaVersion()

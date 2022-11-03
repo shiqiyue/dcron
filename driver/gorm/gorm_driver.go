@@ -15,11 +15,11 @@ type GormDriver struct {
 	serviceJobMetaList map[string][]*driver.JobMeta
 }
 
-func (g GormDriver) Ping() error {
+func (g *GormDriver) Ping() error {
 	return nil
 }
 
-func (g GormDriver) SetHeartBeat(nodeID string) {
+func (g *GormDriver) SetHeartBeat(nodeID string) {
 	go g.heartBear(nodeID)
 }
 
@@ -37,15 +37,15 @@ func (d *GormDriver) heartBear(nodeID string) {
 	}
 }
 
-func (g GormDriver) SetTimeout(timeout time.Duration) {
+func (g *GormDriver) SetTimeout(timeout time.Duration) {
 	g.timeout = timeout
 }
 
-func NewDriver(DB *gorm.DB, timeout time.Duration) (*GormDriver, error) {
+func NewDriver(DB *gorm.DB) (*GormDriver, error) {
 
 	err := DB.AutoMigrate(&JobMeta{}, &JobNode{}, &JobService{}, &MetaVersion{})
 	if err != nil {
 		return nil, err
 	}
-	return &GormDriver{DB: DB, timeout: timeout, serviceJobMetaList: make(map[string][]*driver.JobMeta, 0)}, nil
+	return &GormDriver{DB: DB, serviceJobMetaList: make(map[string][]*driver.JobMeta, 0)}, nil
 }

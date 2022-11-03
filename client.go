@@ -12,7 +12,7 @@ import (
 )
 
 const defaultReplicas = 50
-const defaultNodeDuration = time.Second
+const defaultNodeDuration = time.Second * 5
 const defaultJobMetaDuration = time.Second * 5
 
 //Client is main struct
