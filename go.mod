@@ -10,5 +10,6 @@ require (
 	go.etcd.io/etcd/api/v3 v3.5.4
 	go.etcd.io/etcd/client/v3 v3.5.4
 	go.etcd.io/etcd/tests/v3 v3.5.4
-	gorm.io/gorm v1.23.4
+	gorm.io/driver/mysql v1.4.3
+	gorm.io/gorm v1.24.1
 )

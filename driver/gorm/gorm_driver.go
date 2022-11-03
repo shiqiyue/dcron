@@ -41,11 +41,11 @@ func (g GormDriver) SetTimeout(timeout time.Duration) {
 	g.timeout = timeout
 }
 
-func NewDriver(DB *gorm.DB) (*GormDriver, error) {
+func NewDriver(DB *gorm.DB, timeout time.Duration) (*GormDriver, error) {
 
-	err := DB.AutoMigrate(&JobMeta{}, &JobNode{}, &JobService{})
+	err := DB.AutoMigrate(&JobMeta{}, &JobNode{}, &JobService{}, &MetaVersion{})
 	if err != nil {
 		return nil, err
 	}
-	return &GormDriver{DB: DB}, nil
+	return &GormDriver{DB: DB, timeout: timeout, serviceJobMetaList: make(map[string][]*driver.JobMeta, 0)}, nil
 }

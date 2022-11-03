@@ -32,7 +32,7 @@ func (g GormDriver) RegisterServiceNode(ServiceName string) (string, error) {
 func (g GormDriver) GetServiceNodeList(ServiceName string) ([]string, error) {
 	now := time.Now()
 	jobNodes := make([]*JobNode, 0)
-	err := NewJobNodeQuerySet(g.DB).ServiceNameEq(ServiceName).ExpiredAtLte(now.Unix()).All(&jobNodes)
+	err := NewJobNodeQuerySet(g.DB).ServiceNameEq(ServiceName).ExpiredAtGte(now.Unix()).All(&jobNodes)
 	if err != nil {
 		return nil, err
 	}

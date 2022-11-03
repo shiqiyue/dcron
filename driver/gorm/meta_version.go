@@ -18,7 +18,7 @@ func (d *GormDriver) getMetaVersion() (int64, error) {
 }
 
 func (d *GormDriver) incrMetaVersion(db *gorm.DB) error {
-	updateNum, err := NewMetaVersionQuerySet(db).OrderDescByID().Limit(1).GetUpdater().IncC(1).UpdateNum()
+	updateNum, err := NewMetaVersionQuerySet(db.Session(&gorm.Session{AllowGlobalUpdate: true})).OrderDescByID().Limit(1).GetUpdater().IncC(1).UpdateNum()
 	if err != nil {
 		return err
 	}

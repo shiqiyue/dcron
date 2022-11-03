@@ -25,5 +25,5 @@ func (rd *RedisDriver) RegisterServiceNode(serviceName string) (nodeID string, e
 	if err := rd.redisClient.Set(context.Background(), key, nodeID, rd.timeout).Err(); err != nil {
 		return "", err
 	}
-	return key, nil
+	return nodeID, nil
 }
