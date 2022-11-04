@@ -64,12 +64,12 @@ func newCron(cronOpts ...cron.Option) *cron.Cron {
 }
 
 //NewClientWithOption create a Client with Client Option
-func NewClientWithOption(serviceName string, driver driver.Driver, dcronOpts ...Option) *Client {
-	dcron := newClient(serviceName)
+func NewClientWithOption(serviceName string, driver driver.Driver, dcronOpts []Option, cronOpts ...cron.Option) *Client {
+	client := NewClient(serviceName, driver, cronOpts...)
 	for _, opt := range dcronOpts {
-		opt(dcron)
+		opt(client)
 	}
-	return dcron
+	return client
 }
 
 func newClient(serviceName string) *Client {
