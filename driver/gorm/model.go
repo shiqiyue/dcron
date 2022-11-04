@@ -41,9 +41,9 @@ type JobNode struct {
 	ID          int64     `gorm:"primarykey"`
 	CreatedAt   time.Time `gorm:"not null"`
 	UpdatedAt   time.Time `gorm:"not null"`
-	ServiceName string    `gorm:"not null; index; size:255; comment:服务名称"`
+	ServiceName string    `gorm:"not null; index:idx_service_expired,priority:1; size:255; comment:服务名称"`
 	NodeId      string    `gorm:"not null; index; size:255; comment:节点ID"`
-	ExpiredAt   int64     `gorm:"not null; index; 过期时间戳"`
+	ExpiredAt   int64     `gorm:"not null; index:idx_service_expired,priority:1; comment:过期时间戳"`
 }
 
 func (j JobNode) TableName() string {
