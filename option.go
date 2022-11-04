@@ -26,6 +26,13 @@ func WithNodeUpdateDuration(d time.Duration) Option {
 	}
 }
 
+// WithJobMetaUpdateDuration set job meta update duration
+func WithJobMetaUpdateDuration(d time.Duration) Option {
+	return func(dcron *Client) {
+		dcron.jobMetaUpdateDuration = d
+	}
+}
+
 // WithHashReplicas set hashReplicas
 func WithHashReplicas(d int) Option {
 	return func(dcron *Client) {
