@@ -21,10 +21,11 @@ func (d *Client) loadNodes() error {
 	}
 	d.nodeIds = nodes
 	if string(oldBs) != string(newBs) {
-		d.nodes = consistenthash.New(d.hashReplicas, d.hashFn)
+		ns := consistenthash.New(d.hashReplicas, d.hashFn)
 		for _, node := range nodes {
-			d.nodes.Add(node)
+			ns.Add(node)
 		}
+		d.nodes = ns
 	}
 	return nil
 }
