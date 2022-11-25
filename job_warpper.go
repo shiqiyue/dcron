@@ -1,6 +1,9 @@
 package dcron
 
-import "github.com/robfig/cron/v3"
+import (
+	"github.com/libi/dcron/driver"
+	"github.com/robfig/cron/v3"
+)
 
 // Job Interface
 type Job interface {
@@ -28,4 +31,8 @@ func (job JobWarpper) Run() {
 			job.Job.Run()
 		}
 	}
+}
+
+type JobFactory struct {
+	Func func(*driver.JobMeta) *JobWarpper
 }

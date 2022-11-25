@@ -39,7 +39,9 @@ type Client struct {
 	jobMetas              []*driver.JobMeta
 	jobMetaUpdateDuration time.Duration
 	registerJobs          map[string]*JobWarpper
-	jobMetaLock           *sync.RWMutex
+	// job工厂，如果registerJobs中没有匹配，则使用jobFactory创建任务
+	jobFactory  *JobFactory
+	jobMetaLock *sync.RWMutex
 }
 
 //NewClient create a Client
@@ -57,6 +59,10 @@ func NewClient(serviceName string, driver driver.Driver, cronOpts ...cron.Option
 	dcron.nodeLock = &sync.RWMutex{}
 	dcron.jobMetaLock = &sync.RWMutex{}
 	return dcron
+}
+
+func (c *Client) SetJobFactory(j *JobFactory) {
+	c.jobFactory = j
 }
 
 func newCron(cronOpts ...cron.Option) *cron.Cron {
@@ -155,6 +161,14 @@ func (d *Client) reloadJobMeta(jobMetas []*driver.JobMeta) {
 				continue
 			}
 			jobWarpper.ID = entryID
+		} else if d.jobFactory != nil {
+			f := d.jobFactory.Func(jobMeta)
+			f.Dcron = d
+			_, err := d.cr.AddJob(jobMeta.Cron, f)
+			if err != nil {
+				d.err("添加任务异常:%v", err)
+				continue
+			}
 		}
 	}
 	d.cr.Start()

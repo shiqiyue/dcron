@@ -98,21 +98,18 @@ func TestGormDriver(t *testing.T) {
 func runNode(t *testing.T, drv driver.Driver, nodeId int) {
 	dcron := NewClient("server1", drv, cron.WithSeconds())
 	//添加多个任务 启动多个节点时 任务会均匀分配给各个节点
+	dcron.SetJobFactory(&JobFactory{Func: func(meta *driver.JobMeta) *JobWarpper {
+		return &JobWarpper{
+			Name: meta.JobName,
 
-	err := dcron.RegisterFunc("s1 test1", func() {
-		fmt.Println("run s1 test1")
-		t.Log("执行 service1 test1 任务", time.Now().Format("15:04:05"), nodeId)
+			Func: func() {
+				fmt.Println("run ", meta.JobName)
+				t.Log("执行 ", meta.JobName, time.Now().Format("15:04:05"), nodeId)
 
-	})
-	if err != nil {
-		t.Error("add func error")
-	}
-	err = dcron.RegisterFunc("s1 test2", func() {
-		t.Log("执行 service1 test2 任务", time.Now().Format("15:04:05"), nodeId)
-	})
-	if err != nil {
-		t.Error("add func error")
-	}
+			},
+			Job: nil,
+		}
+	}})
 
 	dcron.Start()
 
