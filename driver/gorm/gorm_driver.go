@@ -11,7 +11,7 @@ type GormDriver struct {
 	DB      *gorm.DB
 	timeout time.Duration
 	// 元数据版本号
-	metaVersion        int64
+	metaVersion        map[string]int64
 	serviceJobMetaList map[string][]*driver.JobMeta
 }
 

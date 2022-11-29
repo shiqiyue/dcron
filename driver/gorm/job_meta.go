@@ -84,18 +84,32 @@ func (g *GormDriver) UpdateJob(serviceName string, jobName, cron string) (string
 }
 
 func (g *GormDriver) GetJobList(serviceName string) ([]*driver.JobMeta, error) {
-	djobMetas, jobMetasExist := g.serviceJobMetaList[serviceName]
-	if jobMetasExist {
-		currentMetaVersion, err := g.getMetaVersion()
-		if err != nil {
-			return nil, err
-		}
-		oldMetaVersion := g.metaVersion
-		g.metaVersion = currentMetaVersion
-		if currentMetaVersion == oldMetaVersion {
-			return djobMetas, nil
-		}
+	oldMetaVersion, oldMetaVersionExist := g.metaVersion[serviceName]
+	// 是否需要刷新任务
+	shouldRefreshJob := false
+	// 获取当前元数据版本号
+	currentMetaVersion, err := g.getMetaVersion()
+	if err != nil {
+		return nil, err
 	}
+	g.metaVersion[serviceName] = currentMetaVersion
+
+	if !oldMetaVersionExist {
+		shouldRefreshJob = true
+	} else if oldMetaVersion != currentMetaVersion {
+		shouldRefreshJob = true
+	}
+
+	if !shouldRefreshJob {
+		djobMetas, _ := g.serviceJobMetaList[serviceName]
+		return djobMetas, nil
+	}
+
+	return g.refreshJobList(serviceName)
+
+}
+
+func (g *GormDriver) refreshJobList(serviceName string) ([]*driver.JobMeta, error) {
 
 	jobMetas := make([]*JobMeta, 0)
 	err := NewJobMetaQuerySet(g.DB).ServiceNameEq(serviceName).All(&jobMetas)
@@ -114,5 +128,4 @@ func (g *GormDriver) GetJobList(serviceName string) ([]*driver.JobMeta, error) {
 	}
 	g.serviceJobMetaList[serviceName] = rs
 	return rs, nil
-
 }
