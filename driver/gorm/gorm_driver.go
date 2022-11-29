@@ -47,5 +47,8 @@ func NewDriver(DB *gorm.DB) (*GormDriver, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &GormDriver{DB: DB, serviceJobMetaList: make(map[string][]*driver.JobMeta, 0)}, nil
+	return &GormDriver{
+		DB:                 DB,
+		serviceJobMetaList: make(map[string][]*driver.JobMeta, 0),
+		metaVersion:        make(map[string]int64, 0)}, nil
 }
