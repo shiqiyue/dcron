@@ -120,7 +120,7 @@ func (s *EtcdDriver) watchService(serviceName string) error {
 	}
 
 	jobMetaPrefix := getJobMetaPrefix(serviceName)
-	resp, err = s.cli.Get(context.Background(), jobMetaPrefix)
+	resp, err = s.cli.Get(context.Background(), jobMetaPrefix, clientv3.WithPrefix())
 	if err != nil {
 		return err
 	}
