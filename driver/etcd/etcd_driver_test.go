@@ -68,7 +68,7 @@ func TestSetHeartBeat(t *testing.T) {
 		require.Nil(t, err)
 		t.Logf("nodeId %v:%v", i, nodeID)
 		if i%2 == 0 {
-			ed.SetHeartBeat(nodeID)
+			ed.SetHeartBeat(nodeID, "")
 			nodeMap[nodeID] = nodeID
 		}
 	}

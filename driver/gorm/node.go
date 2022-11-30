@@ -2,11 +2,27 @@ package gorm
 
 import (
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 	"time"
 )
 
-func (g *GormDriver) updateNodeExpiredAt(nodeId string, expiredAt time.Time) error {
-	err := NewJobNodeQuerySet(g.DB).NodeIdEq(nodeId).GetUpdater().SetExpiredAt(expiredAt.Unix()).Update()
+func (g *GormDriver) updateNodeExpiredAt(nodeId, serviceName string, expiredAt time.Time) error {
+	err := g.DB.Transaction(func(tx *gorm.DB) error {
+		err := NewJobNodeQuerySet(tx).NodeIdEq(nodeId).Delete()
+		if err != nil {
+			return err
+		}
+		node := &JobNode{
+			ServiceName: serviceName,
+			NodeId:      nodeId,
+			ExpiredAt:   expiredAt.Unix(),
+		}
+		err = node.Create(tx)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 	if err != nil {
 		return err
 	}

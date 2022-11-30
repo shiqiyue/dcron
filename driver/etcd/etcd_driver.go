@@ -46,7 +46,7 @@ func (e *EtcdDriver) Ping() error {
 	return nil
 }
 
-func (e *EtcdDriver) SetHeartBeat(nodeID string) {
+func (e *EtcdDriver) SetHeartBeat(nodeID string, serviceName string) {
 	leaseCh, err := e.keepAlive(context.Background(), nodeID)
 	if err != nil {
 		log.Printf("setHeartBeat error: %v", err)
@@ -65,7 +65,7 @@ func (e *EtcdDriver) SetHeartBeat(nodeID string) {
 			case _, ok := <-leaseCh:
 				if !ok {
 					e.revoke()
-					e.SetHeartBeat(nodeID)
+					e.SetHeartBeat(nodeID, "")
 					return
 				}
 			case <-time.After(businessTimeout):

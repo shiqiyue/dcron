@@ -13,7 +13,7 @@ type JobMeta struct {
 type Driver interface {
 	// Ping is check dirver is valid
 	Ping() error
-	SetHeartBeat(nodeID string)
+	SetHeartBeat(nodeID string, serviceName string)
 	SetTimeout(timeout time.Duration)
 	GetServiceNodeList(ServiceName string) ([]string, error)
 	RegisterServiceNode(ServiceName string) (string, error)

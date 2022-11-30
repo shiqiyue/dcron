@@ -38,11 +38,10 @@ func (j JobService) TableName() string {
 //go:generate goqueryset -in $GOFILE
 // gen:qs
 type JobNode struct {
-	ID          int64     `gorm:"primarykey"`
+	NodeId      string    `gorm:"primarykey; size:255; comment:节点ID"`
 	CreatedAt   time.Time `gorm:"not null"`
 	UpdatedAt   time.Time `gorm:"not null"`
 	ServiceName string    `gorm:"not null; index:idx_service_expired,priority:1; size:255; comment:服务名称"`
-	NodeId      string    `gorm:"not null; index; size:255; comment:节点ID"`
 	ExpiredAt   int64     `gorm:"not null; index:idx_service_expired,priority:1; comment:过期时间戳"`
 }
 

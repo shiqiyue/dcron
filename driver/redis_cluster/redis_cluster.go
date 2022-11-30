@@ -67,7 +67,7 @@ func (rd *RedisClusterDriver) SetTimeout(timeout time.Duration) {
 }
 
 //SetHeartBeat set heartbeat
-func (rd *RedisClusterDriver) SetHeartBeat(nodeID string) {
+func (rd *RedisClusterDriver) SetHeartBeat(nodeID string, serviceName string) {
 
 	go rd.heartBear(nodeID)
 }

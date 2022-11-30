@@ -57,7 +57,7 @@ func (d *RedisDriver) SetTimeout(timeout time.Duration) {
 }
 
 //SetHeartBeat set herbear
-func (d *RedisDriver) SetHeartBeat(nodeID string) {
+func (d *RedisDriver) SetHeartBeat(nodeID string, serviceName string) {
 	go d.heartBear(nodeID)
 }
 func (d *RedisDriver) heartBear(nodeID string) {

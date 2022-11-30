@@ -19,17 +19,17 @@ func (g *GormDriver) Ping() error {
 	return nil
 }
 
-func (g *GormDriver) SetHeartBeat(nodeID string) {
-	go g.heartBear(nodeID)
+func (g *GormDriver) SetHeartBeat(nodeID string, serviceName string) {
+	go g.heartBear(nodeID, serviceName)
 }
 
-func (d *GormDriver) heartBear(nodeID string) {
+func (d *GormDriver) heartBear(nodeID, serviceName string) {
 
 	//每间隔timeout/2设置一次key的超时时间为timeout
 	tickers := time.NewTicker(d.timeout / 2)
 	for range tickers.C {
 		expiredAt := time.Now().Add(d.timeout)
-		err := d.updateNodeExpiredAt(nodeID, expiredAt)
+		err := d.updateNodeExpiredAt(nodeID, serviceName, expiredAt)
 		if err != nil {
 			log.Printf("gorm expire error %+v", err)
 			continue

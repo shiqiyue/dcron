@@ -56,7 +56,7 @@ func (d *Client) startNodeWatch() error {
 		return err
 	}
 	d.NodeID = nodeId
-	d.Driver.SetHeartBeat(nodeId)
+	d.Driver.SetHeartBeat(nodeId, d.ServiceName)
 	err = d.loadNodes()
 	if err != nil {
 		return err
